@@ -116,13 +116,13 @@ Sends a photo to the specified chat.
 
 ### sendDocument
 
-Sends a document to the specified chat.
+Sends a document/file to the specified chat.
 
 **Parameters:**
-- `chatId`: Chat ID where to send the document (string or number)
-- `documentUrl`: Document URL or path to local file
+- `chatId`: Chat ID where to send the document (string)
+- `documentPath`: Path to local file
 - `caption`: Document caption (optional)
-- `filename`: File name (optional)
+- `filename`: Custom filename for the document (optional)
 
 ### sendVideo
 

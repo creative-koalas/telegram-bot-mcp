@@ -3,6 +3,7 @@ import os
 import logging
 import asyncio
 import nest_asyncio
+from pathlib import Path
 from typing import Dict, Any, Optional, List, Union, TypedDict, Coroutine
 from telegram import Bot, InputFile
 from dotenv import load_dotenv
@@ -44,6 +45,7 @@ class UpdatesSuccessResponse(TypedDict):
 # Union types for responses
 SendMessageResponse = Union[MessageSuccessResponse, ErrorResponse]
 SendPhotoResponse = Union[MessageSuccessResponse, ErrorResponse]
+SendDocumentResponse = Union[MessageSuccessResponse, ErrorResponse]
 DeleteMessageResponse = Union[DeleteMessageSuccessResponse, ErrorResponse]
 GetMeResponse = Union[BotInfoSuccessResponse, ErrorResponse]
 GetUpdatesResponse = Union[UpdatesSuccessResponse, ErrorResponse]
@@ -139,8 +141,9 @@ def sendPhoto(chatId: str, photoUrl: str, caption: Optional[str] = None) -> Send
         if photoUrl.startswith(('http://', 'https://')):
             photo = photoUrl
         else:
-            if os.path.exists(photoUrl):
-                photo = InputFile(photoUrl)
+            photo_path = Path(photoUrl)
+            if photo_path.exists():
+                photo = InputFile(str(photo_path))
             else:
                 return {
                     "success": False,
@@ -157,6 +160,49 @@ def sendPhoto(chatId: str, photoUrl: str, caption: Optional[str] = None) -> Send
         }
     except Exception as e:
         logger.error(f"Error sending photo: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+@mcp.tool("sendDocument")
+def sendDocument(chatId: str, documentPath: str, caption: Optional[str] = None, filename: Optional[str] = None) -> SendDocumentResponse:
+    """
+    Sends a document/file to the specified chat.
+    
+    Parameters:
+    - chatId: Chat ID where to send the document (string)
+    - documentPath: Path to local file. This MUST be ABSOLUTE PATH.
+    - caption: Document caption (optional)
+    - filename: Custom filename for the document (optional)
+    
+    Returns:
+    - Information about the sent document
+    """
+    try:
+        bot = get_bot()
+        
+        # Convert to Path object and validate file exists
+        doc_path = Path(documentPath)
+        logging.info(f"Document path: {doc_path.absolute()}")
+        
+        if not doc_path.is_file():
+            return {
+                "success": False,
+                "error": f"Path is not a file: {documentPath}"
+            }
+        
+        # Run async method in current event loop
+        message = run_async(bot.send_document(chat_id=chatId, document=doc_path, caption=caption))
+        return {
+            "success": True,
+            "message_id": message.message_id,
+            "date": message.date.timestamp() if message.date else None,
+            "chat_id": message.chat_id
+        }
+    except Exception as e:
+        logger.error(f"Error sending document: {e}")
         return {
             "success": False,
             "error": str(e)
