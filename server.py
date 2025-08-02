@@ -3,11 +3,8 @@ import os
 import logging
 import asyncio
 import nest_asyncio
-from typing import Dict, Any, Optional, List, Union
-from telegram import Bot, Update, InputFile, Message
-from telegram.error import TelegramError
-from telegram.ext import Updater
-from telegram.constants import ParseMode
+from typing import Dict, Any, Optional, List, Union, TypedDict, Coroutine
+from telegram import Bot, InputFile
 from dotenv import load_dotenv
 
 # Apply patch for nested event loops support
@@ -15,6 +12,41 @@ nest_asyncio.apply()
 
 # Load environment variables
 load_dotenv()
+
+# Type definitions for API responses
+class MessageSuccessResponse(TypedDict):
+    success: bool
+    message_id: int
+    date: Optional[float]
+    chat_id: int
+
+class ErrorResponse(TypedDict):
+    success: bool
+    error: str
+
+class DeleteMessageSuccessResponse(TypedDict):
+    success: bool
+
+class BotInfoSuccessResponse(TypedDict):
+    success: bool
+    id: int
+    first_name: str
+    username: Optional[str]
+    is_bot: bool
+    can_join_groups: bool
+    can_read_all_group_messages: bool
+    supports_inline_queries: bool
+
+class UpdatesSuccessResponse(TypedDict):
+    success: bool
+    updates: List[Dict[str, Any]]
+
+# Union types for responses
+SendMessageResponse = Union[MessageSuccessResponse, ErrorResponse]
+SendPhotoResponse = Union[MessageSuccessResponse, ErrorResponse]
+DeleteMessageResponse = Union[DeleteMessageSuccessResponse, ErrorResponse]
+GetMeResponse = Union[BotInfoSuccessResponse, ErrorResponse]
+GetUpdatesResponse = Union[UpdatesSuccessResponse, ErrorResponse]
 
 # Logging configuration
 logging.basicConfig(
@@ -31,10 +63,10 @@ mcp = FastMCP(
 )
 
 # Global variables
-bot_instance = None
+bot_instance: Optional[Bot] = None
 
 
-def get_bot():
+def get_bot() -> Bot:
     """Gets bot instance, initializing it if necessary."""
     global bot_instance
     
@@ -51,14 +83,14 @@ def get_bot():
 
 
 # Helper function for running async tasks
-def run_async(coro):
+def run_async(coro: Coroutine[Any, Any, Any]) -> Any:
     """Runs an async coroutine in the current event loop."""
     loop = asyncio.get_event_loop()
     return loop.run_until_complete(coro)
 
 
 @mcp.tool("sendMessage")
-def sendMessage(chatId: str, text: str) -> Dict[str, Any]:
+def sendMessage(chatId: str, text: str) -> SendMessageResponse:
     """
     Sends a text message to the specified chat.
     
@@ -88,7 +120,7 @@ def sendMessage(chatId: str, text: str) -> Dict[str, Any]:
 
 
 @mcp.tool("sendPhoto")
-def sendPhoto(chatId: str, photoUrl: str, caption: Optional[str] = None) -> Dict[str, Any]:
+def sendPhoto(chatId: str, photoUrl: str, caption: Optional[str] = None) -> SendPhotoResponse:
     """
     Sends a photo to the specified chat.
     
@@ -132,7 +164,7 @@ def sendPhoto(chatId: str, photoUrl: str, caption: Optional[str] = None) -> Dict
 
 
 @mcp.tool("deleteMessage")
-def deleteMessage(chatId: str, messageId: int) -> Dict[str, Any]:
+def deleteMessage(chatId: str, messageId: int) -> DeleteMessageResponse:
     """
     Deletes a message from the chat.
     
@@ -159,7 +191,7 @@ def deleteMessage(chatId: str, messageId: int) -> Dict[str, Any]:
 
 
 @mcp.tool("getMe")
-def getMe() -> Dict[str, Any]:
+def getMe() -> GetMeResponse:
     """
     Gets information about the bot.
     
@@ -189,7 +221,7 @@ def getMe() -> Dict[str, Any]:
 
 
 @mcp.tool("getUpdates")
-def getUpdates(offset: Optional[int] = None, limit: int = 100, timeout: int = 0) -> Dict[str, Any]:
+def getUpdates(offset: Optional[int] = None, limit: int = 100, timeout: int = 0) -> GetUpdatesResponse:
     """
     Gets updates (messages, events) from Telegram Bot API.
     
@@ -217,7 +249,7 @@ def getUpdates(offset: Optional[int] = None, limit: int = 100, timeout: int = 0)
         }
 
 
-def main():
+def main() -> None:
     # Run MCP server
     mcp.run()
 
