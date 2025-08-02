@@ -5,7 +5,7 @@ import asyncio
 import nest_asyncio
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Union, TypedDict, Coroutine
-from telegram import Bot, InputFile
+from telegram import Bot
 from dotenv import load_dotenv
 
 # Apply patch for nested event loops support
@@ -128,7 +128,7 @@ def sendPhoto(chatId: str, photoUrl: str, caption: Optional[str] = None) -> Send
     
     Parameters:
     - chatId: Chat ID where to send the photo (string)
-    - photoUrl: Photo URL or path to local file
+    - photoUrl: Photo URL or path to local file (if path, MUST be ABSOLUTE PATH)
     - caption: Photo caption (optional)
     
     Returns:
@@ -143,7 +143,7 @@ def sendPhoto(chatId: str, photoUrl: str, caption: Optional[str] = None) -> Send
         else:
             photo_path = Path(photoUrl)
             if photo_path.exists():
-                photo = InputFile(str(photo_path))
+                photo = photo_path
             else:
                 return {
                     "success": False,
@@ -151,7 +151,13 @@ def sendPhoto(chatId: str, photoUrl: str, caption: Optional[str] = None) -> Send
                 }
         
         # Run async method in current event loop
-        message = run_async(bot.send_photo(chat_id=chatId, photo=photo, caption=caption))
+        message = run_async(
+            bot.send_photo(
+                chat_id=chatId, photo=photo, caption=caption,
+                read_timeout=30,
+                write_timeout=30
+            )
+        )
         return {
             "success": True,
             "message_id": message.message_id,
